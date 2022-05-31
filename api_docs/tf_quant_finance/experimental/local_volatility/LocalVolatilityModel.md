@@ -103,13 +103,13 @@ paths = lv.sample_paths(
     random_type=tff.math.random.RandomType.STATELESS_ANTITHETIC,
     seed=[1, 2])
 # paths.shape = (10000, 3, 2)
+```
 
 #### References:
   [1]: Iain J. Clark. Foreign exchange option pricing - A Practitioner's
   guide. Chapter 5, Section 5.3.2. 2011.
 
 #### Args:
-
 
 * <b>`dim`</b>: A Python scalar which corresponds to the number of underlying assets
   comprising the model.

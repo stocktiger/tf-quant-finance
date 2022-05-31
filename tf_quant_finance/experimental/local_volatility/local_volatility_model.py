@@ -326,44 +326,6 @@ class LocalVolatilityModel(generic_ito_process.GenericItoProcess):
   a flexible framework to model any (arbitrage free) volatility surface.
 
   #### Example: Simulation of local volatility process.
-
-  ```python
-  import numpy as np
-  import tensorflow.compat.v2 as tf
-  import tf_quant_finance as tff
-
-  dtype = tf.float64
-  dim = 2
-  year = dim * [[2021, 2022]]
-  month = dim * [[1, 1]]
-  day = dim * [[1, 1]]
-  expiries = tff.datetime.dates_from_year_month_day(year, month, day)
-  valuation_date = [(2020, 1, 1)]
-  expiry_times = tff.datetime.daycount_actual_365_fixed(
-      start_date=valuation_date, end_date=expiries, dtype=dtype)
-  strikes = dim * [[[0.1, 0.9, 1.0, 1.1, 3], [0.1, 0.9, 1.0, 1.1, 3]]]
-  iv = dim * [[[0.135, 0.13, 0.1, 0.11, 0.13],
-               [0.135, 0.13, 0.1, 0.11, 0.13]]]
-  spot = dim * [1.0]
-  risk_free_rate = [0.02]
-  r = tf.convert_to_tensor(risk_free_rate, dtype=dtype)
-  df = lambda t: tf.math.exp(-r * t)
-
-  lv = tff.models.LocalVolatilityModel.from_market_data(
-      dim, val_date, expiries, strikes, iv, spot, df, [0.0], dtype=dtype)
-  num_samples = 10000
-  paths = lv.sample_paths(
-      [1.0, 1.5, 2.0],
-      num_samples=num_samples,
-      initial_state=spot,
-      time_step=0.1,
-      random_type=tff.math.random.RandomType.STATELESS_ANTITHETIC,
-      seed=[1, 2])
-  # paths.shape = (10000, 3, 2)
-
-  #### References:
-    [1]: Iain J. Clark. Foreign exchange option pricing - A Practitioner's
-    guide. Chapter 5, Section 5.3.2. 2011.
   """
 
   def __init__(
