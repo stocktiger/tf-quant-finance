@@ -1,4 +1,4 @@
-<!-- 
+<!--
 After updating, convert this document into pde_solvers.pdf as follows:
 
 pandoc --toc --highlight-style=tango --variable urlcolor=blue -o pde_solvers.pdf pde_solvers.md
@@ -31,9 +31,9 @@ We currently support equations of the following form:
 Given $V(\b x, t_0)$, the solver approximates $V(\b x, t_1)$. The solver can
 go both forward ($t_1 > t_0$) and backward ($t_1 < t_0$) in time.
 
-This includes as particular cases the backward Kolmogorov equation: 
+This includes as particular cases the backward Kolmogorov equation:
 $A_{ij} \equiv 1, B_{ij} \equiv 1, t_1 < t_0$, and the forward Kolmogorov
-(Fokker-Plank) equation: $a_{ij} \equiv 1, b_{ij} \equiv 1, t_1 > t_0.$ 
+(Fokker-Plank) equation: $a_{ij} \equiv 1, b_{ij} \equiv 1, t_1 > t_0.$
 
 The spatial grid (i.e. the grid of $\b x$ vectors) can be arbitrary in
 one-dimensional problems ($N = 1$). In multiple dimensions the grid should be
@@ -45,7 +45,7 @@ boundary conditions on each edge of the spatial grid:
 
 \begin{equation}
 \alpha(\b x_b, t) V(\b x_b, t) + \beta(\b x_b, t)\frac{\d V}{\d \b n}(\b x_b, t)
-= \gamma(\b x_b, t), 
+= \gamma(\b x_b, t),
 \label{boundcond}
 \end{equation}
 
@@ -81,7 +81,7 @@ boundaries:
 \end{split}
 \end{equation}
 
-We're seeking $V(x, t_1)$ with $t_1 > t_0$. 
+We're seeking $V(x, t_1)$ with $t_1 > t_0$.
 
 Let's prepare the necessary ingredients. First, the spatial grid:
 
@@ -134,7 +134,7 @@ Next, the values at the initial time $t_0$:
 ```python
 variance = 0.2
 xs = grid[0]
-initial_value_grid = (tf.math.exp(-xs**2 / (2 * variance)) / 
+initial_value_grid = (tf.math.exp(-xs**2 / (2 * variance)) /
     tf.math.sqrt(2 * np.pi * variance)
 ```
 
@@ -217,7 +217,7 @@ returned tensors must be either scalars or have a shape implied by the `grid`
 (this is easy to do in 1D, and a bit more tricky in multidimensional case, more
 details are below).
 
-The Black-Scholes equation is evolved backwards in time. Therefore use 
+The Black-Scholes equation is evolved backwards in time. Therefore use
 `fd_solvers.solve_backward` instead of `fd_solvers.solve_forward`, and make sure
 that `start_time` is greater than `end_time`.
 
@@ -285,7 +285,7 @@ result_value_grid, final_grid, end_time, steps_performed = (
         inner_first_order_coeff_fn=inner_first_order_coeff_fn))
 ```
 
- 
+
 ## Batching
 
 The solver can work with multiple PDEs in parallel. For example, let's solve
@@ -396,7 +396,7 @@ passed into the solver: `dim = len(grid)` (in all examples so far, `dim = 1`).
 with time, so should be determined from the `grid` argument passed into
 `second_order_coeff_fn`, `first_order_coeff_fn` and `zeroth_order_coeff_fn`.
 Recall that `grid` is a List of 1D Tensors; `grid_shape` is a concatenation of
-shapes of these tensors. The requirement is that 
+shapes of these tensors. The requirement is that
 `second_order_coeff_fn(...)[i][j]`,
 `first_order_coeff_fn(...)[i]` and `zeroth_order_coeff_fn(...)` must be tensors
 whose shape is broadcastable to the shape `batch_shape + grid_shape`.
@@ -415,7 +415,7 @@ boundary conditions:
 
 \begin{equation}
 \alpha(\b x_b, t) V(\b x_b, t) + \beta(\b x_b, t)\frac{\d V}{\d \b n}(\b x_b, t)
-= \gamma(\b x_b, t), 
+= \gamma(\b x_b, t),
 \end{equation}
 
 where $\b x_b$ is a point on the boundary, $\d V/\d n$ is the derivative
@@ -444,12 +444,12 @@ $\alpha, \beta, \gamma$ as Tensors or scalars, or returning `None` in case of
 default boundary conditions. For example, a boundary condition
 
 \begin{equation}
-V + 2 \frac{\d V}{\d \b n} = 3 
+V + 2 \frac{\d V}{\d \b n} = 3
 \end{equation}
 
 is defined as follows:
 
-```python 
+```python
 def boundary_cond(t, grid):
   return 1, 2, 3
 ```
@@ -598,7 +598,7 @@ result_value_grid, final_grid, end_time, steps_performed = (
 One way to visualize the result is by creating a heatmap:
 
 ```python
-plt.imshow(result_value_grid.numpy(), 
+plt.imshow(result_value_grid.numpy(),
            extent=[x_min, x_max, y_min, y_max],
            cmap='hot')
 plt.show()
@@ -807,7 +807,7 @@ Eq.\eqref{space_discretized} for $\b V(t + \delta t)$ given $\b V(t)$
 All three lines in the above pseudocode represent the routines that are mostly
 independent from each other. Therefore, the solver is modularized accordingly:
 
-- `fd_solvers.py` implement looping over time steps, i.e. line (1) in the 
+- `fd_solvers.py` implement looping over time steps, i.e. line (1) in the
 pseudocode. The routines accept (and provide reasonable defaults for)
 `one_step_fn` argument, which is a callable performing both (2) and (3).
 
@@ -849,7 +849,7 @@ f(x_0 - \Delta_-) &=& f(x_0) - f'(x_0) \Delta_{-}
 
 Solving this system of equations for $f'(x_0)$ and $f''(x_0)$ yields
 \begin{eqnarray}
-&f'(x_0) \approx C_+ f(x_0 + \Delta_+) + C_- f(x_0 - \Delta_-) - 
+&f'(x_0) \approx C_+ f(x_0 + \Delta_+) + C_- f(x_0 - \Delta_-) -
   (C_+ + C_-) f(x_0),
 \label{deriv_approx_central} \\
 &C_\pm = \pm\frac{\Delta_\mp}{(\Delta_+ + \Delta_-)\Delta_\pm}.
@@ -857,7 +857,7 @@ Solving this system of equations for $f'(x_0)$ and $f''(x_0)$ yields
 
 and
 \begin{eqnarray}
-&f''(x_0) \approx D_+ f(x_0 + \Delta_+) + D_- f(x_0 - \Delta_-) - 
+&f''(x_0) \approx D_+ f(x_0 + \Delta_+) + D_- f(x_0 - \Delta_-) -
   (D_+ + D_-) f(x_0),
 \label{deriv_approx_central} \\
 &D_\pm = \frac{2}{(\Delta_+ + \Delta_-)\Delta_\pm}.
@@ -966,14 +966,14 @@ for the inner part $\b V_{inner} = [V_1, ... V_{n-1}]^T$:
 \label {dVdt_with_boundary}
 \end{equation}
 
-where 
-\begin{eqnarray} 
+where
+\begin{eqnarray}
 &&\tilde L_{11} = L_{11} + \xi_1 L_{01}, \qquad \tilde L_{12} =
 L_{12} + \xi_2 L_{01},\label{bound_corr_first} \\ &&\tilde L_{n-1, n-1} =
 L_{n-1,n-1} + \bar\xi_1 L_{n,n-1}, \qquad \tilde L_{n-1, n-2} = L_{n-1,n-2} +
 \bar\xi_2 L_{n,n-1}, \\ &&\tilde L_{ij} = L_{ij} \qquad i=2\ldots n-2,\\ &&b_1 =
 L_{01} \eta, \qquad b_{n-1} = L_{n, n-1}\bar \eta, \\ &&b_i = 0 \qquad i=2\ldots
-n-2.\label{bound_corr_last} 
+n-2.\label{bound_corr_last}
 \end{eqnarray}
 
 Note that in case of Dirichlet conditions ($\alpha = 1, \beta = 0$) this
@@ -997,7 +997,7 @@ the system of equations like above. Instead, we space-discretize the boundary
 condition as usual (except that the finite differences are non-central), and
 include them in Eq. \eqref {dVdt_with_boundary}. Thus, $V_{inner}$ in
 Eq. \eqref {dVdt_with_boundary} excludes boundaries with Robin conditions, but
-includes the ones with "default" conditions. 
+includes the ones with "default" conditions.
 
 ### Boundary conditions in multidimensional PDEs
 
@@ -1022,7 +1022,7 @@ already known vector). This allows us to reformulate the space-discretized
 problem as
 
 \begin{equation}
-\frac {d \b V_{inner}}{dt} = {\tilde L} \b V_{inner} + 
+\frac {d \b V_{inner}}{dt} = {\tilde L} \b V_{inner} +
 {L}_{mixed} \b V  +\b b,
 \label {dVdt_with_boundary_multidim}
 \end{equation}
