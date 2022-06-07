@@ -99,113 +99,113 @@ def callable_discount_factor(t, lower=0.01, upper=0.02):
 @test_util.run_all_in_graph_and_eager_modes
 class LocalVolatilityTest(tf.test.TestCase, parameterized.TestCase):
 
-  @parameterized.named_parameters(
-      ('1d_flat', 1, [0.0], None, 20, True, False, 0, True),
-      ('1d', 1, [0.0], None, 20, True, False),
-      ('2d', 2, [0.0], None, 20, True, False),
-      ('3d', 3, [0.0], None, 20, True, False),
-      ('1d_nonzero_riskfree_rate', 1, [0.05], None, 40, True, False, 1),
-      ('1d_using_vol_surface', 1, [0.0], None, 20, False, False),
-      ('1d_with_callable_rate1', 1, None,
-       functools.partial(callable_discount_factor,
-                         upper=0.02), 40, True, False, 1),
-      ('1d_with_callable_rate1_and_vol_surface', 1, None,
-       functools.partial(callable_discount_factor,
-                         upper=0.02), 40, False, False, 1),
-      ('1d_with_callable_rate2', 1, None,
-       functools.partial(callable_discount_factor,
-                         upper=0.05), 40, True, False, 1),
-      ('1d_with_xla', 1, [0.0], None, 20, True, True),
-  )
-  def test_lv_correctness(self,
-                          dim,
-                          risk_free_rate,
-                          discount_factor_fn,
-                          num_time_steps,
-                          using_market_data,
-                          use_xla,
-                          iv_start_index=0,
-                          flat_iv=False):
-    """Tests that the model reproduces implied volatility smile."""
-    dtype = tf.float64
-    num_samples = 10000
-    if flat_iv:
-      val_date, expiries, expiry_times, strikes, iv, spot = build_tensors(dim)
-    else:
-      tensors = build_scaled_tensors(dim)
-      val_date, expiries, expiry_times, strikes, iv, spot = tensors
+  # @parameterized.named_parameters(
+  #     ('1d_flat', 1, [0.0], None, 20, True, False, 0, True),
+  #     ('1d', 1, [0.0], None, 20, True, False),
+  #     ('2d', 2, [0.0], None, 20, True, False),
+  #     ('3d', 3, [0.0], None, 20, True, False),
+  #     ('1d_nonzero_riskfree_rate', 1, [0.05], None, 40, True, False, 1),
+  #     ('1d_using_vol_surface', 1, [0.0], None, 20, False, False),
+  #     ('1d_with_callable_rate1', 1, None,
+  #      functools.partial(callable_discount_factor,
+  #                        upper=0.02), 40, True, False, 1),
+  #     ('1d_with_callable_rate1_and_vol_surface', 1, None,
+  #      functools.partial(callable_discount_factor,
+  #                        upper=0.02), 40, False, False, 1),
+  #     ('1d_with_callable_rate2', 1, None,
+  #      functools.partial(callable_discount_factor,
+  #                        upper=0.05), 40, True, False, 1),
+  #     ('1d_with_xla', 1, [0.0], None, 20, True, True),
+  # )
+  # def test_lv_correctness(self,
+  #                         dim,
+  #                         risk_free_rate,
+  #                         discount_factor_fn,
+  #                         num_time_steps,
+  #                         using_market_data,
+  #                         use_xla,
+  #                         iv_start_index=0,
+  #                         flat_iv=False):
+  #   """Tests that the model reproduces implied volatility smile."""
+  #   dtype = tf.float64
+  #   num_samples = 10000
+  #   if flat_iv:
+  #     val_date, expiries, expiry_times, strikes, iv, spot = build_tensors(dim)
+  #   else:
+  #     tensors = build_scaled_tensors(dim)
+  #     val_date, expiries, expiry_times, strikes, iv, spot = tensors
 
-    # Handle the cases where we have constant rates.
-    if discount_factor_fn is None:
-      r = tf.convert_to_tensor(risk_free_rate, dtype=dtype)
-      discount_factor_fn = lambda t: tf.math.exp(-r * t)
+  #   # Handle the cases where we have constant rates.
+  #   if discount_factor_fn is None:
+  #     r = tf.convert_to_tensor(risk_free_rate, dtype=dtype)
+  #     discount_factor_fn = lambda t: tf.math.exp(-r * t)
 
-    if using_market_data:
-      lv = LocalVolatilityModel.from_market_data(
-          dim=dim,
-          valuation_date=val_date,
-          expiry_dates=expiries,
-          strikes=strikes,
-          implied_volatilities=iv,
-          spot=spot,
-          discount_factor_fn=discount_factor_fn,
-          dividend_yield=[0.0],
-          dtype=dtype)
-    else:
-      vs = build_volatility_surface(
-          val_date, expiry_times, expiries, strikes, iv, dtype=dtype)
-      lv = LocalVolatilityModel.from_volatility_surface(
-          dim=dim,
-          spot=spot,
-          implied_volatility_surface=vs,
-          discount_factor_fn=discount_factor_fn,
-          dividend_yield=[0.0],
-          dtype=dtype)
+  #   if using_market_data:
+  #     lv = LocalVolatilityModel.from_market_data(
+  #         dim=dim,
+  #         valuation_date=val_date,
+  #         expiry_dates=expiries,
+  #         strikes=strikes,
+  #         implied_volatilities=iv,
+  #         spot=spot,
+  #         discount_factor_fn=discount_factor_fn,
+  #         dividend_yield=[0.0],
+  #         dtype=dtype)
+  #   else:
+  #     vs = build_volatility_surface(
+  #         val_date, expiry_times, expiries, strikes, iv, dtype=dtype)
+  #     lv = LocalVolatilityModel.from_volatility_surface(
+  #         dim=dim,
+  #         spot=spot,
+  #         implied_volatility_surface=vs,
+  #         discount_factor_fn=discount_factor_fn,
+  #         dividend_yield=[0.0],
+  #         dtype=dtype)
 
-    @tf.function(experimental_compile=use_xla)
-    def _get_sample_paths():
-      return lv.sample_paths(
-          # Our test times are the same for each dim.
-          times=expiry_times[0],
-          num_samples=num_samples,
-          initial_state=spot,
-          num_time_steps=num_time_steps,
-          random_type=tff.math.random.RandomType.STATELESS_ANTITHETIC,
-          seed=[1, 2])
+  #   @tf.function(experimental_compile=use_xla)
+  #   def _get_sample_paths():
+  #     return lv.sample_paths(
+  #         # Our test times are the same for each dim.
+  #         times=expiry_times[0],
+  #         num_samples=num_samples,
+  #         initial_state=spot,
+  #         num_time_steps=num_time_steps,
+  #         random_type=tff.math.random.RandomType.STATELESS_ANTITHETIC,
+  #         seed=[1, 2])
 
-    paths = self.evaluate(_get_sample_paths())
+  #   paths = self.evaluate(_get_sample_paths())
 
-    @tf.function(experimental_compile=use_xla)
-    def _get_implied_vol(time, strike, paths, spot, dtype):
-      discount_factor = discount_factor_fn(time)
+  #   @tf.function(experimental_compile=use_xla)
+  #   def _get_implied_vol(time, strike, paths, spot, dtype):
+  #     discount_factor = discount_factor_fn(time)
 
-      num_not_nan = tf.cast(
-          paths.shape[0] - tf.math.count_nonzero(tf.math.is_nan(paths)),
-          paths.dtype)
-      paths = tf.where(tf.math.is_nan(paths), tf.zeros_like(paths), paths)
-      # Calculate reduce_mean of paths. Workaround for XLA compatibility.
-      option_value = tf.math.divide_no_nan(
-          tf.reduce_sum(tf.nn.relu(paths - strike)), num_not_nan)
-      # ITM option value can't fall below intrinsic value.
-      option_value = tf.maximum(option_value, spot - strike)
+  #     num_not_nan = tf.cast(
+  #         paths.shape[0] - tf.math.count_nonzero(tf.math.is_nan(paths)),
+  #         paths.dtype)
+  #     paths = tf.where(tf.math.is_nan(paths), tf.zeros_like(paths), paths)
+  #     # Calculate reduce_mean of paths. Workaround for XLA compatibility.
+  #     option_value = tf.math.divide_no_nan(
+  #         tf.reduce_sum(tf.nn.relu(paths - strike)), num_not_nan)
+  #     # ITM option value can't fall below intrinsic value.
+  #     option_value = tf.maximum(option_value, spot - strike)
 
-      iv = implied_vol(
-          prices=discount_factor * option_value,
-          strikes=strike,
-          expiries=time,
-          spots=spot,
-          discount_factors=discount_factor,
-          dtype=dtype,
-          validate_args=False)
-      return iv
+  #     iv = implied_vol(
+  #         prices=discount_factor * option_value,
+  #         strikes=strike,
+  #         expiries=time,
+  #         spots=spot,
+  #         discount_factors=discount_factor,
+  #         dtype=dtype,
+  #         validate_args=False)
+  #     return iv
 
-    for d in range(dim):
-      for i in range(expiry_times[0].shape[0]):
-        for j in range(iv_start_index, len(iv[0][0])):
-          sim_iv = self.evaluate(
-              _get_implied_vol(expiry_times[d][i], strikes[d][i][j],
-                               paths[:, i, d], spot[d], dtype))
-          self.assertAllClose(sim_iv[0], iv[d][i][j], atol=0.05, rtol=0.005)
+  #   for d in range(dim):
+  #     for i in range(expiry_times[0].shape[0]):
+  #       for j in range(iv_start_index, len(iv[0][0])):
+  #         sim_iv = self.evaluate(
+  #             _get_implied_vol(expiry_times[d][i], strikes[d][i][j],
+  #                              paths[:, i, d], spot[d], dtype))
+  #         self.assertAllClose(sim_iv[0], iv[d][i][j], atol=0.05, rtol=0.005)
 
   @parameterized.named_parameters(
       ('iv', dupire_local_volatility_iv),
@@ -217,14 +217,34 @@ class LocalVolatilityTest(tf.test.TestCase, parameterized.TestCase):
     dtype = tf.float64
     tensors = build_scaled_tensors(dim)
     val_date, expiries, expiry_times, strikes, iv, initial_spot = tensors
+
+    print()
+    print(val_date)
+    print(expiry_times)
+    print(expiries)
+    print(strikes)
+    print(iv)
+    print()
+
     vs = build_volatility_surface(
         val_date, expiry_times, expiries, strikes, iv, dtype=dtype)
+    print("VOL")
+    print(vs.volatility(strike=[[32100]],
+                            expiry_times=[[1]]))
     dividend_yield = [0.]
     r = tf.convert_to_tensor([0.], dtype=dtype)
     discount_factor_fn = lambda t: tf.math.exp(-r * t)
 
     times = tf.convert_to_tensor([1., 2., 3.], dtype=dtype)
     spots = tf.reshape(tf.convert_to_tensor([1., 2., 3.], dtype=dtype), [3, 1])
+    print()
+    print(times)
+    print(spots)
+    print(initial_spot)
+    print(vs.volatility)
+    print(discount_factor_fn)
+    print(dividend_yield)
+    print()
     dupire_vols = dupire_local_volatility(times, spots, initial_spot,
                                           vs.volatility, discount_factor_fn,
                                           dividend_yield)
@@ -234,175 +254,175 @@ class LocalVolatilityTest(tf.test.TestCase, parameterized.TestCase):
       self.assertAllClose(
           dupire_vols[:, i], true_vols[i], atol=0.05, rtol=0.005)
 
-  @parameterized.named_parameters(
-      ('iv', dupire_local_volatility_iv),
-      ('prices', dupire_local_volatility_prices),
-  )
-  def test_dupire_local_volatility_2d(self, dupire_local_volatility):
-    """Tests dupire_local_volatility correctness when dim=2."""
-    dim = 2
-    dtype = tf.float64
-    tensors = build_scaled_tensors(dim)
-    val_date, expiries, expiry_times, strikes, iv, initial_spot = tensors
+  # @parameterized.named_parameters(
+  #     ('iv', dupire_local_volatility_iv),
+  #     ('prices', dupire_local_volatility_prices),
+  # )
+  # def test_dupire_local_volatility_2d(self, dupire_local_volatility):
+  #   """Tests dupire_local_volatility correctness when dim=2."""
+  #   dim = 2
+  #   dtype = tf.float64
+  #   tensors = build_scaled_tensors(dim)
+  #   val_date, expiries, expiry_times, strikes, iv, initial_spot = tensors
 
-    vs = build_volatility_surface(
-        val_date, expiry_times, expiries, strikes, iv, dtype=dtype)
-    dividend_yield = [0.]
-    r = tf.convert_to_tensor([0.], dtype=dtype)
-    discount_factor_fn = lambda t: tf.math.exp(-r * t)
+  #   vs = build_volatility_surface(
+  #       val_date, expiry_times, expiries, strikes, iv, dtype=dtype)
+  #   dividend_yield = [0.]
+  #   r = tf.convert_to_tensor([0.], dtype=dtype)
+  #   discount_factor_fn = lambda t: tf.math.exp(-r * t)
 
-    times = tf.convert_to_tensor([1., 2.], dtype=dtype)
-    times = tf.broadcast_to(times, [2, 2])
-    spots = [[1., 1.5], [2., 2.5]]
-    spots = tf.convert_to_tensor(spots, dtype=dtype)
-    dupire_vols = dupire_local_volatility(times, spots, initial_spot,
-                                          vs.volatility, discount_factor_fn,
-                                          dividend_yield)
-    true_vols = [[0.22848, 0.3], [0.3, 0.3]]
-    for i in range(2):
-      self.assertAllClose(
-          dupire_vols[:, i], true_vols[i], atol=0.05, rtol=0.005)
+  #   times = tf.convert_to_tensor([1., 2.], dtype=dtype)
+  #   times = tf.broadcast_to(times, [2, 2])
+  #   spots = [[1., 1.5], [2., 2.5]]
+  #   spots = tf.convert_to_tensor(spots, dtype=dtype)
+  #   dupire_vols = dupire_local_volatility(times, spots, initial_spot,
+  #                                         vs.volatility, discount_factor_fn,
+  #                                         dividend_yield)
+  #   true_vols = [[0.22848, 0.3], [0.3, 0.3]]
+  #   for i in range(2):
+  #     self.assertAllClose(
+  #         dupire_vols[:, i], true_vols[i], atol=0.05, rtol=0.005)
 
-  @parameterized.named_parameters(
-      ('iv', dupire_local_volatility_iv),
-      ('prices', dupire_local_volatility_prices),
-  )
-  def test_dupire_with_flat_surface(self, dupire_local_volatility):
-    """Tests dupire_local_volatility with a flat vol surface."""
-    dim = 1
-    dtype = tf.float64
-    val_date, expiries, expiry_times, strikes, iv, initial_spot = build_tensors(
-        dim)
-    vs = build_volatility_surface(
-        val_date, expiry_times, expiries, strikes, iv, dtype=dtype)
-    dividend_yield = [0.]
-    r = tf.convert_to_tensor([0.], dtype=dtype)
-    discount_factor_fn = lambda t: tf.math.exp(-r * t)
+  # @parameterized.named_parameters(
+  #     ('iv', dupire_local_volatility_iv),
+  #     ('prices', dupire_local_volatility_prices),
+  # )
+  # def test_dupire_with_flat_surface(self, dupire_local_volatility):
+  #   """Tests dupire_local_volatility with a flat vol surface."""
+  #   dim = 1
+  #   dtype = tf.float64
+  #   val_date, expiries, expiry_times, strikes, iv, initial_spot = build_tensors(
+  #       dim)
+  #   vs = build_volatility_surface(
+  #       val_date, expiry_times, expiries, strikes, iv, dtype=dtype)
+  #   dividend_yield = [0.]
+  #   r = tf.convert_to_tensor([0.], dtype=dtype)
+  #   discount_factor_fn = lambda t: tf.math.exp(-r * t)
 
-    times = tf.convert_to_tensor([1., 2., 3.], dtype=dtype)
-    spots = tf.reshape(tf.convert_to_tensor([1., 2., 3.], dtype=dtype), [3, 1])
-    dupire_vols = dupire_local_volatility(times, spots, initial_spot,
-                                          vs.volatility, discount_factor_fn,
-                                          dividend_yield)
-    true_vols = [0.1] * 3
-    for i in range(3):
-      self.assertAllClose(dupire_vols[:, i], true_vols)
+  #   times = tf.convert_to_tensor([1., 2., 3.], dtype=dtype)
+  #   spots = tf.reshape(tf.convert_to_tensor([1., 2., 3.], dtype=dtype), [3, 1])
+  #   dupire_vols = dupire_local_volatility(times, spots, initial_spot,
+  #                                         vs.volatility, discount_factor_fn,
+  #                                         dividend_yield)
+  #   true_vols = [0.1] * 3
+  #   for i in range(3):
+  #     self.assertAllClose(dupire_vols[:, i], true_vols)
 
-  @parameterized.named_parameters(
-      ('1d', 1, [0.0], None, 20, True, False),
-      ('2d', 2, [0.0], None, 20, True, False),
-      ('3d', 3, [0.0], None, 20, True, False, 0),
-      ('1d_nonzero_riskfree_rate', 1, [0.05], None, 20, True, False, 1),
-      ('1d_using_vol_surface', 1, [0.0], None, 20, False, False),
-      ('1d_with_callable_rate1', 1, None,
-       functools.partial(callable_discount_factor,
-                         upper=0.02), 20, True, False, 1),
-      ('1d_with_callable_rate1_and_vol_surface', 1, None,
-       functools.partial(callable_discount_factor,
-                         upper=0.02), 20, False, False, 1),
-      ('1d_with_callable_rate2', 1, None,
-       functools.partial(callable_discount_factor,
-                         upper=0.05), 20, True, False, 1),
-      ('1d_with_xla', 1, [0.0], None, 20, True, True),
-  )
-  def test_interpolated_lv_correctness(self,
-                                       dim,
-                                       risk_free_rate,
-                                       discount_factor_fn,
-                                       num_time_steps,
-                                       using_market_data,
-                                       use_xla,
-                                       iv_start_index=0):
-    """Tests that the model reproduces implied volatility smile."""
-    dtype = tf.float64
-    num_samples = 5000
-    precompute_iv = True
-    tensors = build_scaled_tensors(dim)
-    val_date, expiries, expiry_times, strikes, iv, spot = tensors
+  # @parameterized.named_parameters(
+  #     ('1d', 1, [0.0], None, 20, True, False),
+  #     ('2d', 2, [0.0], None, 20, True, False),
+  #     ('3d', 3, [0.0], None, 20, True, False, 0),
+  #     ('1d_nonzero_riskfree_rate', 1, [0.05], None, 20, True, False, 1),
+  #     ('1d_using_vol_surface', 1, [0.0], None, 20, False, False),
+  #     ('1d_with_callable_rate1', 1, None,
+  #      functools.partial(callable_discount_factor,
+  #                        upper=0.02), 20, True, False, 1),
+  #     ('1d_with_callable_rate1_and_vol_surface', 1, None,
+  #      functools.partial(callable_discount_factor,
+  #                        upper=0.02), 20, False, False, 1),
+  #     ('1d_with_callable_rate2', 1, None,
+  #      functools.partial(callable_discount_factor,
+  #                        upper=0.05), 20, True, False, 1),
+  #     ('1d_with_xla', 1, [0.0], None, 20, True, True),
+  # )
+  # def test_interpolated_lv_correctness(self,
+  #                                      dim,
+  #                                      risk_free_rate,
+  #                                      discount_factor_fn,
+  #                                      num_time_steps,
+  #                                      using_market_data,
+  #                                      use_xla,
+  #                                      iv_start_index=0):
+  #   """Tests that the model reproduces implied volatility smile."""
+  #   dtype = tf.float64
+  #   num_samples = 5000
+  #   precompute_iv = True
+  #   tensors = build_scaled_tensors(dim)
+  #   val_date, expiries, expiry_times, strikes, iv, spot = tensors
 
-    # Handle the cases where we have constant rates.
-    if discount_factor_fn is None:
-      r = tf.convert_to_tensor(risk_free_rate, dtype=dtype)
-      discount_factor_fn = lambda t: tf.math.exp(-r * t)
+  #   # Handle the cases where we have constant rates.
+  #   if discount_factor_fn is None:
+  #     r = tf.convert_to_tensor(risk_free_rate, dtype=dtype)
+  #     discount_factor_fn = lambda t: tf.math.exp(-r * t)
 
-    # Grids for interpolation.
-    # 10 points, matching `strikes`
-    spot_grid = np.arange(0.9, 1.3, 0.04).tolist()
-    times_grid = tf.range(
-        start=0., limit=3., delta=3. / num_time_steps, dtype=dtype)
-    times_grid = tf.sort(tf.concat([times_grid, expiry_times[0]], 0))
+  #   # Grids for interpolation.
+  #   # 10 points, matching `strikes`
+  #   spot_grid = np.arange(0.9, 1.3, 0.04).tolist()
+  #   times_grid = tf.range(
+  #       start=0., limit=3., delta=3. / num_time_steps, dtype=dtype)
+  #   times_grid = tf.sort(tf.concat([times_grid, expiry_times[0]], 0))
 
-    if using_market_data:
-      lv = LocalVolatilityModel.from_market_data(
-          dim=dim,
-          valuation_date=val_date,
-          expiry_dates=expiries,
-          strikes=strikes,
-          implied_volatilities=iv,
-          spot=spot,
-          discount_factor_fn=discount_factor_fn,
-          dividend_yield=[0.0],
-          times_grid=times_grid,
-          spot_grid=spot_grid,
-          precompute_iv=precompute_iv,
-          dtype=dtype)
-    else:
-      vs = build_volatility_surface(
-          val_date, expiry_times, expiries, strikes, iv, dtype=dtype)
-      lv = LocalVolatilityModel.from_volatility_surface(
-          dim=dim,
-          spot=spot,
-          implied_volatility_surface=vs,
-          discount_factor_fn=discount_factor_fn,
-          dividend_yield=[0.0],
-          times_grid=times_grid,
-          spot_grid=spot_grid,
-          precompute_iv=precompute_iv,
-          dtype=dtype)
+  #   if using_market_data:
+  #     lv = LocalVolatilityModel.from_market_data(
+  #         dim=dim,
+  #         valuation_date=val_date,
+  #         expiry_dates=expiries,
+  #         strikes=strikes,
+  #         implied_volatilities=iv,
+  #         spot=spot,
+  #         discount_factor_fn=discount_factor_fn,
+  #         dividend_yield=[0.0],
+  #         times_grid=times_grid,
+  #         spot_grid=spot_grid,
+  #         precompute_iv=precompute_iv,
+  #         dtype=dtype)
+  #   else:
+  #     vs = build_volatility_surface(
+  #         val_date, expiry_times, expiries, strikes, iv, dtype=dtype)
+  #     lv = LocalVolatilityModel.from_volatility_surface(
+  #         dim=dim,
+  #         spot=spot,
+  #         implied_volatility_surface=vs,
+  #         discount_factor_fn=discount_factor_fn,
+  #         dividend_yield=[0.0],
+  #         times_grid=times_grid,
+  #         spot_grid=spot_grid,
+  #         precompute_iv=precompute_iv,
+  #         dtype=dtype)
 
-    @tf.function(experimental_compile=use_xla)
-    def _get_sample_paths():
-      return lv.sample_paths(
-          # Our test times are the same for each dim.
-          times=expiry_times[0],
-          num_samples=num_samples,
-          initial_state=spot,
-          random_type=tff.math.random.RandomType.STATELESS_ANTITHETIC,
-          seed=[1, 2])
+  #   @tf.function(experimental_compile=use_xla)
+  #   def _get_sample_paths():
+  #     return lv.sample_paths(
+  #         # Our test times are the same for each dim.
+  #         times=expiry_times[0],
+  #         num_samples=num_samples,
+  #         initial_state=spot,
+  #         random_type=tff.math.random.RandomType.STATELESS_ANTITHETIC,
+  #         seed=[1, 2])
 
-    paths = self.evaluate(_get_sample_paths())
+  #   paths = self.evaluate(_get_sample_paths())
 
-    @tf.function(experimental_compile=use_xla)
-    def _get_implied_vol(time, strike, paths, spot, dtype):
-      discount_factor = discount_factor_fn(time)
+  #   @tf.function(experimental_compile=use_xla)
+  #   def _get_implied_vol(time, strike, paths, spot, dtype):
+  #     discount_factor = discount_factor_fn(time)
 
-      num_not_nan = tf.cast(
-          paths.shape[0] - tf.math.count_nonzero(tf.math.is_nan(paths)),
-          paths.dtype)
-      paths = tf.where(tf.math.is_nan(paths), tf.zeros_like(paths), paths)
-      # Calculate reduce_mean of paths. Workaround for XLA compatibility.
-      option_value = tf.math.divide_no_nan(
-          tf.reduce_sum(tf.nn.relu(paths - strike)), num_not_nan)
-      # ITM option value can't fall below intrinsic value.
-      option_value = tf.maximum(option_value, spot - strike)
+  #     num_not_nan = tf.cast(
+  #         paths.shape[0] - tf.math.count_nonzero(tf.math.is_nan(paths)),
+  #         paths.dtype)
+  #     paths = tf.where(tf.math.is_nan(paths), tf.zeros_like(paths), paths)
+  #     # Calculate reduce_mean of paths. Workaround for XLA compatibility.
+  #     option_value = tf.math.divide_no_nan(
+  #         tf.reduce_sum(tf.nn.relu(paths - strike)), num_not_nan)
+  #     # ITM option value can't fall below intrinsic value.
+  #     option_value = tf.maximum(option_value, spot - strike)
 
-      iv = implied_vol(
-          prices=discount_factor * option_value,
-          strikes=strike,
-          expiries=time,
-          spots=spot,
-          discount_factors=discount_factor,
-          dtype=dtype,
-          validate_args=False)
-      return iv
+  #     iv = implied_vol(
+  #         prices=discount_factor * option_value,
+  #         strikes=strike,
+  #         expiries=time,
+  #         spots=spot,
+  #         discount_factors=discount_factor,
+  #         dtype=dtype,
+  #         validate_args=False)
+  #     return iv
 
-    for d in range(dim):
-      for i in range(expiry_times[0].shape[0]):
-        for j in range(iv_start_index, len(iv[0][0])):
-          sim_iv = self.evaluate(
-              _get_implied_vol(expiry_times[d][i], strikes[d][i][j],
-                               paths[:, i, d], spot[d], dtype))
-          self.assertAllClose(sim_iv[0], iv[d][i][j], atol=0.05, rtol=0.005)
+  #   for d in range(dim):
+  #     for i in range(expiry_times[0].shape[0]):
+  #       for j in range(iv_start_index, len(iv[0][0])):
+  #         sim_iv = self.evaluate(
+  #             _get_implied_vol(expiry_times[d][i], strikes[d][i][j],
+  #                              paths[:, i, d], spot[d], dtype))
+  #         self.assertAllClose(sim_iv[0], iv[d][i][j], atol=0.05, rtol=0.005)
 
 if __name__ == '__main__':
   tf.test.main()
