@@ -460,7 +460,7 @@ class LocalVolatilityModel(generic_ito_process.GenericItoProcess):
     with tf.name_scope(name):
       if initial_state is not None:
         initial_state = tf.math.log(
-            tf.convert_to_tensor(initial_state, dtype_hint=tf.float64))
+            tf.convert_to_tensor(initial_state, dtype_hint=tf.float32))
       if self.precompute_iv():
         if (time_step is not None or num_time_steps is not None or
             times_grid is not None):
